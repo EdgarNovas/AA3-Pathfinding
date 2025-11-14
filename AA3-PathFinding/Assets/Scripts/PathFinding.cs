@@ -118,12 +118,22 @@ public class PathFinding : MonoBehaviour
         List<Vector3> waypoints = new List<Vector3>();
         Vector2 directionOld = Vector2.zero;
 
+        if(path.Count > 0)
+        {
+            waypoints.Add(path[0].worldPosition);
+        }
+
         for(int i = 1; i < path.Count; i++)
         {
             Vector2 directionNew = new Vector2(path[i - 1].gridX - path[i].gridX, path[i - 1].gridY - path[i].gridY);
             if(directionNew != directionOld)
             {
-                waypoints.Add(path[i].worldPosition);
+                if (waypoints.Contains(path[i].worldPosition) == false)
+                {
+                    waypoints.Add(path[i].worldPosition);
+                }
+
+                
             }
             directionOld = directionNew;
         }
