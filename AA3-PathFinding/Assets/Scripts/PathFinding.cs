@@ -6,27 +6,28 @@ using UnityEngine;
 using System.Diagnostics;
 using System;
 
+
+public enum AlgorithmType
+{
+    AStar,
+    Dijkstra,
+    GreedyBFS,
+    BFS
+}
+
 public class PathFinding : MonoBehaviour
 {
+    public AlgorithmType currentAlgorithm = AlgorithmType.AStar;
     PathRequestManager requestManager;
-    TwoDAPath grid;
+    TwoDAPath grid2D; // Renombrado para mayor claridad
+    Grid3D grid3D;
 
     private void Awake()
     {
         requestManager = GetComponent<PathRequestManager>();
-        grid = GetComponent<TwoDAPath>();
+        grid2D = GetComponent<TwoDAPath>();
+        grid3D = GetComponent<Grid3D>();
     }
-
-    /*
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            FindPath(seeker.position, target.position);
-        }
-        
-    }
-    */
 
     public void StartFindPath(Vector3 startPos, Vector3 targetPos)
     {
@@ -37,65 +38,95 @@ public class PathFinding : MonoBehaviour
     {
         Stopwatch sw = new Stopwatch();
         sw.Start();
+
         Vector3[] waypoints = new Vector3[0];
         bool pathSuccess = false;
 
-        Node startNode = grid.NodeFromWorldPoint(startPos);
-        Node targetNode = grid.NodeFromWorldPoint(targetPos);
+        // 1. DETECTAR QUÉ GRID USAR Y EVITAR NULOS
+        Node startNode = null;
+        Node targetNode = null;
+        int maxSize = 0;
+        bool use3D = false;
 
-        if(startNode.walkable && targetNode.walkable)
+        if (grid3D != null)
         {
-            Heap<Node> openSet = new Heap<Node>(grid.MaxSize);
+            use3D = true;
+            startNode = grid3D.NodeFromWorldPoint(startPos);
+            targetNode = grid3D.NodeFromWorldPoint(targetPos);
+            maxSize = grid3D.MaxSize;
+        }
+        else if (grid2D != null)
+        {
+            use3D = false;
+            startNode = grid2D.NodeFromWorldPoint(startPos);
+            targetNode = grid2D.NodeFromWorldPoint(targetPos);
+            maxSize = grid2D.MaxSize;
+        }
+        else
+        {
+            UnityEngine.Debug.LogError("PathFinding: No se encontró ningún componente Grid (ni 2D ni 3D).");
+            yield break; // Salimos si no hay mapa
+        }
+
+        // 2. COMPROBAR SI LOS NODOS SON VÁLIDOS Y CAMINABLES
+        if (startNode.walkable && targetNode.walkable)
+        {
+            // Usamos maxSize dinámico
+            Heap<Node> openSet = new Heap<Node>(maxSize);
             HashSet<Node> closedSet = new HashSet<Node>();
+
             openSet.Add(startNode);
 
-            while(openSet.Count > 0)
+            while (openSet.Count > 0)
             {
                 Node currentNode = openSet.RemoveFirst();
                 closedSet.Add(currentNode);
-                if(currentNode == targetNode)
+
+                if (currentNode == targetNode)
                 {
                     sw.Stop();
                     print("Path Found " + sw.ElapsedMilliseconds + " ms");
                     pathSuccess = true;
-                
                     break;
                 }
 
-                foreach(Node neighbour in grid.GetNeighbours(currentNode))
+                // 3. OBTENER VECINOS SEGÚN EL GRID ACTIVO
+                List<Node> neighbours;
+                if (use3D)
+                    neighbours = grid3D.GetNeighbours(currentNode);
+                else
+                    neighbours = grid2D.GetNeighbours(currentNode);
+
+                foreach (Node neighbour in neighbours)
                 {
-                    if(!neighbour.walkable || closedSet.Contains(neighbour))
+                    if (!neighbour.walkable || closedSet.Contains(neighbour))
                     {
                         continue;
                     }
 
                     int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
-                    if(newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
+                    if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
                     {
                         neighbour.gCost = newMovementCostToNeighbour;
                         neighbour.hCost = GetDistance(neighbour, targetNode);
                         neighbour.parent = currentNode;
 
                         if (!openSet.Contains(neighbour))
-                        {
                             openSet.Add(neighbour);
-                        }
                         else
-                        {
                             openSet.UpdateItem(neighbour);
-                        }
                     }
                 }
-
             }
         }
+
         yield return null;
+
         if (pathSuccess)
         {
-            waypoints = RetracePath(startNode, targetNode); 
+            waypoints = RetracePath(startNode, targetNode);
         }
-        requestManager.FinishedProcessingPath(waypoints,pathSuccess);
-
+        requestManager.FinishedProcessingPath(waypoints, pathSuccess);
     }
 
     Vector3[] RetracePath(Node startNode, Node endNode)
@@ -103,13 +134,16 @@ public class PathFinding : MonoBehaviour
         List<Node> path = new List<Node>();
         Node currentNode = endNode;
 
-        while (currentNode != startNode) 
+        while (currentNode != startNode)
         {
-            path.Add(currentNode); 
+            path.Add(currentNode);
             currentNode = currentNode.parent;
         }
+        // Invertimos primero para simplificar en el orden correcto (inicio -> fin)
+        path.Reverse();
         Vector3[] waypoints = SimplifyPath(path);
-        Array.Reverse(waypoints);
+
+        // SimplifyPath devuelve array, no necesitamos invertir de nuevo si lo hacemos bien
         return waypoints;
     }
 
@@ -118,30 +152,21 @@ public class PathFinding : MonoBehaviour
         List<Vector3> waypoints = new List<Vector3>();
         Vector2 directionOld = Vector2.zero;
 
-        if(path.Count > 0)
+        for (int i = 0; i < path.Count; i++)
         {
-            waypoints.Add(path[0].worldPosition);
+            // Nota: En 3D es mejor devolver todos los nodos al principio para probar
+            // o calcular la dirección basándose en gridX/gridY aunque sea 3D
+            waypoints.Add(path[i].worldPosition);
         }
 
-        for(int i = 1; i < path.Count; i++)
-        {
-            Vector2 directionNew = new Vector2(path[i - 1].gridX - path[i].gridX, path[i - 1].gridY - path[i].gridY);
-            if(directionNew != directionOld)
-            {
-                if (waypoints.Contains(path[i].worldPosition) == false)
-                {
-                    waypoints.Add(path[i].worldPosition);
-                }
-
-                
-            }
-            directionOld = directionNew;
-        }
+        // He simplificado esta función temporalmente para asegurar que el movimiento 
+        // funcione suave en 3D antes de optimizar vértices.
         return waypoints.ToArray();
     }
 
     int GetDistance(Node nodeA, Node nodeB)
     {
+        // Esto funciona igual para 2D y 3D porque gridY en 3D representa la Z
         int distanceX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
         int distanceY = Mathf.Abs(nodeA.gridY - nodeB.gridY);
 
