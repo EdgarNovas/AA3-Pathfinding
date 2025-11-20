@@ -5,6 +5,7 @@ using System.Xml;
 using UnityEngine;
 using System.Diagnostics;
 using System;
+using UnityEditor;
 
 
 public enum AlgorithmType
@@ -19,13 +20,12 @@ public class PathFinding : MonoBehaviour
 {
     public AlgorithmType currentAlgorithm = AlgorithmType.AStar;
     PathRequestManager requestManager;
-    TwoDAPath grid2D; // Renombrado para mayor claridad
     Grid3D grid3D;
 
     private void Awake()
     {
         requestManager = GetComponent<PathRequestManager>();
-        grid2D = GetComponent<TwoDAPath>();
+      
         grid3D = GetComponent<Grid3D>();
     }
 
@@ -42,91 +42,49 @@ public class PathFinding : MonoBehaviour
         Vector3[] waypoints = new Vector3[0];
         bool pathSuccess = false;
 
-        // 1. DETECTAR QUÉ GRID USAR Y EVITAR NULOS
-        Node startNode = null;
-        Node targetNode = null;
-        int maxSize = 0;
-        bool use3D = false;
+        
+        int nodesExplored = 0;
 
-        if (grid3D != null)
-        {
-            use3D = true;
-            startNode = grid3D.NodeFromWorldPoint(startPos);
-            targetNode = grid3D.NodeFromWorldPoint(targetPos);
-            maxSize = grid3D.MaxSize;
-        }
-        else if (grid2D != null)
-        {
-            use3D = false;
-            startNode = grid2D.NodeFromWorldPoint(startPos);
-            targetNode = grid2D.NodeFromWorldPoint(targetPos);
-            maxSize = grid2D.MaxSize;
-        }
-        else
-        {
-            UnityEngine.Debug.LogError("PathFinding: No se encontró ningún componente Grid (ni 2D ni 3D).");
-            yield break; // Salimos si no hay mapa
-        }
+        Node startNode = grid3D.NodeFromWorldPoint(startPos);
+        Node targetNode = grid3D.NodeFromWorldPoint(targetPos);
 
-        // 2. COMPROBAR SI LOS NODOS SON VÁLIDOS Y CAMINABLES
         if (startNode.walkable && targetNode.walkable)
         {
-            // Usamos maxSize dinámico
-            Heap<Node> openSet = new Heap<Node>(maxSize);
-            HashSet<Node> closedSet = new HashSet<Node>();
+            // Limpio la grid porque cada algoritmo calcula los costos distintos
+            grid3D.ResetGrid();
 
-            openSet.Add(startNode);
-
-            while (openSet.Count > 0)
+            switch (currentAlgorithm)
             {
-                Node currentNode = openSet.RemoveFirst();
-                closedSet.Add(currentNode);
-
-                if (currentNode == targetNode)
-                {
-                    sw.Stop();
-                    print("Path Found " + sw.ElapsedMilliseconds + " ms");
-                    pathSuccess = true;
+                case AlgorithmType.AStar:
+                    pathSuccess = AStar(startNode, targetNode, ref nodesExplored);
                     break;
-                }
-
-                // 3. OBTENER VECINOS SEGÚN EL GRID ACTIVO
-                List<Node> neighbours;
-                if (use3D)
-                    neighbours = grid3D.GetNeighbours(currentNode);
-                else
-                    neighbours = grid2D.GetNeighbours(currentNode);
-
-                foreach (Node neighbour in neighbours)
-                {
-                    if (!neighbour.walkable || closedSet.Contains(neighbour))
-                    {
-                        continue;
-                    }
-
-                    int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
-                    if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
-                    {
-                        neighbour.gCost = newMovementCostToNeighbour;
-                        neighbour.hCost = GetDistance(neighbour, targetNode);
-                        neighbour.parent = currentNode;
-
-                        if (!openSet.Contains(neighbour))
-                            openSet.Add(neighbour);
-                        else
-                            openSet.UpdateItem(neighbour);
-                    }
-                }
+                case AlgorithmType.Dijkstra:
+                    //pathSuccess = Dijkstra(startNode, targetNode, ref nodesExplored);
+                    break;
+                case AlgorithmType.GreedyBFS:
+                    //pathSuccess = Greedy(startNode, targetNode, ref nodesExplored);
+                    break;
+                case AlgorithmType.BFS:
+                    //pathSuccess = BFS(startNode, targetNode, ref nodesExplored);
+                    break;
             }
         }
 
-        yield return null;
+        sw.Stop();
 
+        
         if (pathSuccess)
         {
             waypoints = RetracePath(startNode, targetNode);
+            UnityEngine.Debug.Log($"Algoritmo: {currentAlgorithm} | Tiempo: {sw.ElapsedMilliseconds} ms | Nodos Explorados: {nodesExplored}");
         }
+        else
+        {
+            UnityEngine.Debug.Log($"Algoritmo: {currentAlgorithm} | No se encontró camino | Nodos Explorados: {nodesExplored}");
+        }
+
         requestManager.FinishedProcessingPath(waypoints, pathSuccess);
+        yield return null;
     }
 
     Vector3[] RetracePath(Node startNode, Node endNode)
@@ -139,11 +97,11 @@ public class PathFinding : MonoBehaviour
             path.Add(currentNode);
             currentNode = currentNode.parent;
         }
-        // Invertimos primero para simplificar en el orden correcto (inicio -> fin)
+        // Invierto el path para ponerlo de principio a fin
         path.Reverse();
         Vector3[] waypoints = SimplifyPath(path);
 
-        // SimplifyPath devuelve array, no necesitamos invertir de nuevo si lo hacemos bien
+        // SimplifyPath devuelve array asi que puedes entrar por donde quieras
         return waypoints;
     }
 
@@ -154,19 +112,15 @@ public class PathFinding : MonoBehaviour
 
         for (int i = 0; i < path.Count; i++)
         {
-            // Nota: En 3D es mejor devolver todos los nodos al principio para probar
-            // o calcular la dirección basándose en gridX/gridY aunque sea 3D
+            
             waypoints.Add(path[i].worldPosition);
         }
-
-        // He simplificado esta función temporalmente para asegurar que el movimiento 
-        // funcione suave en 3D antes de optimizar vértices.
         return waypoints.ToArray();
     }
 
     int GetDistance(Node nodeA, Node nodeB)
     {
-        // Esto funciona igual para 2D y 3D porque gridY en 3D representa la Z
+        // la Y es la z
         int distanceX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
         int distanceY = Mathf.Abs(nodeA.gridY - nodeB.gridY);
 
@@ -175,4 +129,43 @@ public class PathFinding : MonoBehaviour
 
         return 14 * distanceX + 10 * (distanceY - distanceX);
     }
+
+
+    // Coste = gCost (distancia desde inicio) + hCost (distancia al final)
+    bool AStar(Node startNode, Node targetNode, ref int nodesExplored)
+    {
+        Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
+        HashSet<Node> closedSet = new HashSet<Node>();
+
+        startNode.gCost = 0; // La distancia al principio es 0
+        startNode.hCost = GetDistance(startNode, targetNode);
+        openSet.Add(startNode);
+
+        while (openSet.Count > 0)
+        {
+            Node currentNode = openSet.RemoveFirst();
+            nodesExplored++;
+            closedSet.Add(currentNode);
+
+            if (currentNode == targetNode) return true;
+
+            foreach (Node neighbour in grid3D.GetNeighbours(currentNode))
+            {
+                if (!neighbour.walkable || closedSet.Contains(neighbour)) continue;
+
+                int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
+                if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
+                {
+                    neighbour.gCost = newMovementCostToNeighbour;
+                    neighbour.hCost = GetDistance(neighbour, targetNode);
+                    neighbour.parent = currentNode;
+
+                    if (!openSet.Contains(neighbour)) openSet.Add(neighbour);
+                    else openSet.UpdateItem(neighbour);
+                }
+            }
+        }
+        return false;
+    }
+
 }
