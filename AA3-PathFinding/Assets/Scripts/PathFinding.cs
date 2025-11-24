@@ -65,7 +65,7 @@ public class PathFinding : MonoBehaviour
                     //pathSuccess = Greedy(startNode, targetNode, ref nodesExplored);
                     break;
                 case AlgorithmType.BFS:
-                    //pathSuccess = BFS(startNode, targetNode, ref nodesExplored);
+                    pathSuccess = BFS(startNode, targetNode, ref nodesExplored);
                     break;
             }
         }
@@ -168,4 +168,32 @@ public class PathFinding : MonoBehaviour
         return false;
     }
 
+    bool BFS(Node startNode, Node targetNode, ref int nodesExplored)
+    {
+        Queue<Node> openSet = new Queue<Node>(grid3D.MaxSize);
+        HashSet<Node> closedSet = new HashSet<Node>();
+
+        openSet.Enqueue(startNode);
+
+        while (openSet.Count > 0)
+        {
+            Node currentNode = openSet.Dequeue();
+            nodesExplored++;
+            closedSet.Add(currentNode);
+
+            if (currentNode == targetNode) return true;
+
+            foreach (Node neighbour in grid3D.GetNeighbours(currentNode))
+            {
+                if (!neighbour.walkable || closedSet.Contains(neighbour)) continue;
+
+                if (!openSet.Contains(neighbour))
+                {
+                    neighbour.parent = currentNode;
+                    openSet.Enqueue(neighbour);
+                };
+            }
+        }
+        return false;
+    }
 }
