@@ -59,7 +59,7 @@ public class PathFinding : MonoBehaviour
                     pathSuccess = AStar(startNode, targetNode, ref nodesExplored);
                     break;
                 case AlgorithmType.Dijkstra:
-                    //pathSuccess = Dijkstra(startNode, targetNode, ref nodesExplored);
+                    pathSuccess = Dijkstra(startNode, targetNode, ref nodesExplored);
                     break;
                 case AlgorithmType.GreedyBFS:
                     //pathSuccess = Greedy(startNode, targetNode, ref nodesExplored);
@@ -192,6 +192,40 @@ public class PathFinding : MonoBehaviour
                     neighbour.parent = currentNode;
                     openSet.Enqueue(neighbour);
                 };
+            }
+        }
+        return false;
+    }
+
+    bool Dijkstra(Node startNode, Node targetNode, ref int nodesExplored)
+    {
+        Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
+        HashSet<Node> closedSet = new HashSet<Node>();
+
+        startNode.gCost = 0; // La distancia al principio es 0
+        openSet.Add(startNode);
+
+        while (openSet.Count > 0)
+        {
+            Node currentNode = openSet.RemoveFirst();
+            nodesExplored++;
+            closedSet.Add(currentNode);
+
+            if (currentNode == targetNode) return true;
+
+            foreach (Node neighbour in grid3D.GetNeighbours(currentNode))
+            {
+                if (!neighbour.walkable || closedSet.Contains(neighbour)) continue;
+
+                int newMovementCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
+                if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
+                {
+                    neighbour.gCost = newMovementCostToNeighbour;
+                    neighbour.parent = currentNode;
+
+                    if (!openSet.Contains(neighbour)) openSet.Add(neighbour);
+                    else openSet.UpdateItem(neighbour);
+                }
             }
         }
         return false;
