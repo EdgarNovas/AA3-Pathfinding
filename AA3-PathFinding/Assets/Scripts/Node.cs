@@ -13,6 +13,8 @@ namespace Edgar
         public int gridX;
         public int gridY;
 
+        public bool isVisible;
+
         public int gCost;
         public int hCost;
 

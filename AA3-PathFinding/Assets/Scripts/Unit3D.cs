@@ -7,10 +7,12 @@ public class Unit3D : MonoBehaviour
     [Header("Movimiento")]
     [SerializeField] float speed = 5f; 
     [SerializeField] float turnSpeed = 10f;
-
+    [SerializeField] bool isPlayerControlled = true;
     // Variables de Pathfinding A*
     private Vector3[] path;
     private int targetIndex;
+
+    
 
 
     private Animator animator;
@@ -25,18 +27,21 @@ public class Unit3D : MonoBehaviour
 
     private void Update()
     {
-        
-        if (Input.GetMouseButtonDown(0))
+        if(isPlayerControlled)
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-
-            
-            if (Physics.Raycast(ray, out hit, 1000))
+            if (Input.GetMouseButtonDown(0))
             {
-                PathRequestManager.RequestPath(transform.position, hit.point, OnPathFound);
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+
+
+                if (Physics.Raycast(ray, out hit, 1000))
+                {
+                    PathRequestManager.RequestPath(transform.position, hit.point, OnPathFound);
+                }
             }
         }
+       
     }
 
     /// <summary>

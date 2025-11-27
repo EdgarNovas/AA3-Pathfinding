@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Edgar;
 using System.Collections.Generic;
+using System.Collections;
 
 public class Grid3D : MonoBehaviour
 {
@@ -9,10 +10,21 @@ public class Grid3D : MonoBehaviour
     public LayerMask unwalkableMask;
     public Vector2 gridWorldSize; // x es Ancho, y es Profundidad (Z)
     public float nodeRadius;
-    Edgar.Node[,] grid;
+    Node[,] grid;
+
+    public Node[,] GridArray
+    {
+        get { return grid; }
+    }
 
     float nodeDiameter;
     int gridSizeX, gridSizeY; // gridSizeY representará el eje Z
+
+    //Estas variables son para hacer dinamica los obstaculos de la grid
+    [Header("Actualización Dinámica")]
+    public bool updateGridDynamic = true;   // Activa/Desactiva la actualización
+    public float updateInterval = 0.2f;     // Cada cuánto tiempo comprobamos (0.2s = 5 veces por seg)
+
 
     private void Awake()
     {
@@ -20,7 +32,11 @@ public class Grid3D : MonoBehaviour
         gridSizeX = Mathf.RoundToInt(gridWorldSize.x / nodeDiameter);
         gridSizeY = Mathf.RoundToInt(gridWorldSize.y / nodeDiameter);
         CreateGrid();
+
+        StartCoroutine(UpdateGridRoutine());
     }
+
+    
 
     public int MaxSize
     {
@@ -29,7 +45,7 @@ public class Grid3D : MonoBehaviour
 
     private void CreateGrid()
     {
-        grid = new Edgar.Node[gridSizeX, gridSizeY];
+        grid = new Node[gridSizeX, gridSizeY];
 
         
         Vector3 worldBottomLeft = transform.position - Vector3.right * gridWorldSize.x / 2 - Vector3.forward * gridWorldSize.y / 2;
@@ -93,7 +109,38 @@ public class Grid3D : MonoBehaviour
             n.gCost = int.MaxValue; 
             n.hCost = 0;
             n.parent = null;
-            // Si quereis añadir una variable de visitado al nodo, resetéadla aquí si vosotros Carles y Joana
+            // Si quereis añadir una variable de visitado al nodo, resetéadla aquí si vosotros Carles y Joana xD
+        }
+    }
+
+
+    IEnumerator UpdateGridRoutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(updateInterval);
+            UpdateObstacles();
+        }
+    }
+
+    // Esta funcion actualiza el estado a "walkable"
+    public void UpdateObstacles()
+    {
+        if (grid == null) return;
+
+        for (int x = 0; x < gridSizeX; x++)
+        {
+            for (int y = 0; y < gridSizeY; y++)
+            {
+                Node node = grid[x, y];
+
+                
+                // Si Physics.CheckSphere devuelve true, es que hay obstáculo
+                bool isObstructed = Physics.CheckSphere(node.worldPosition, nodeRadius, unwalkableMask);
+
+                // Actualizamos la propiedad del nodo existente
+                node.walkable = !isObstructed;
+            }
         }
     }
 
