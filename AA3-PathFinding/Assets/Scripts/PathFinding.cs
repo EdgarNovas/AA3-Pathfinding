@@ -62,7 +62,7 @@ public class PathFinding : MonoBehaviour
                     pathSuccess = Dijkstra(startNode, targetNode, ref nodesExplored);
                     break;
                 case AlgorithmType.GreedyBFS:
-                    //pathSuccess = Greedy(startNode, targetNode, ref nodesExplored);
+                    pathSuccess = Greedy(startNode, targetNode, ref nodesExplored);
                     break;
                 case AlgorithmType.BFS:
                     pathSuccess = BFS(startNode, targetNode, ref nodesExplored);
@@ -225,6 +225,50 @@ public class PathFinding : MonoBehaviour
 
                     if (!openSet.Contains(neighbour)) openSet.Add(neighbour);
                     else openSet.UpdateItem(neighbour);
+                }
+            }
+        }
+        return false;
+    }
+
+    bool Greedy(Node startNode, Node targetNode, ref int nodesExplored)
+    {
+        Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
+        HashSet<Node> closedSet = new HashSet<Node>();
+
+        startNode.hCost = GetDistance(startNode, targetNode);
+        openSet.Add(startNode);
+
+        while (openSet.Count > 0)
+        {
+            Node currentNode = openSet.RemoveFirst();
+            nodesExplored++;
+
+            if (currentNode == targetNode)
+                return true;
+
+            closedSet.Add(currentNode);
+
+            foreach (Node neighbour in grid3D.GetNeighbours(currentNode))
+            {
+                if (!neighbour.walkable || closedSet.Contains(neighbour)) continue;
+
+                int priority = GetDistance(neighbour, targetNode);
+
+                if (!openSet.Contains(neighbour))
+                {
+                    neighbour.hCost = priority;
+                    neighbour.parent = currentNode;
+                    openSet.Add(neighbour);
+                }
+                else
+                {
+                    if (priority < neighbour.hCost)
+                    {
+                        neighbour.hCost = priority;
+                        neighbour.parent = currentNode;
+                        openSet.UpdateItem(neighbour);
+                    }
                 }
             }
         }
