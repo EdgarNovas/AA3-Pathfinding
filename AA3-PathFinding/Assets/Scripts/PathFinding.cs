@@ -132,7 +132,7 @@ public class PathFinding : MonoBehaviour
 
 
     // Coste = gCost (distancia desde inicio) + hCost (distancia al final)
-    bool AStar(Node startNode, Node targetNode, ref int nodesExplored)
+    public bool AStar(Node startNode, Node targetNode, ref int nodesExplored)
     {
         Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
         HashSet<Node> closedSet = new HashSet<Node>();
@@ -168,7 +168,7 @@ public class PathFinding : MonoBehaviour
         return false;
     }
 
-    bool BFS(Node startNode, Node targetNode, ref int nodesExplored)
+    public bool BFS(Node startNode, Node targetNode, ref int nodesExplored)
     {
         Queue<Node> openSet = new Queue<Node>(grid3D.MaxSize);
         HashSet<Node> closedSet = new HashSet<Node>();
@@ -197,7 +197,7 @@ public class PathFinding : MonoBehaviour
         return false;
     }
 
-    bool Dijkstra(Node startNode, Node targetNode, ref int nodesExplored)
+    public bool Dijkstra(Node startNode, Node targetNode, ref int nodesExplored)
     {
         Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
         HashSet<Node> closedSet = new HashSet<Node>();
@@ -231,7 +231,7 @@ public class PathFinding : MonoBehaviour
         return false;
     }
 
-    bool Greedy(Node startNode, Node targetNode, ref int nodesExplored)
+    public bool Greedy(Node startNode, Node targetNode, ref int nodesExplored)
     {
         Heap<Node> openSet = new Heap<Node>(grid3D.MaxSize);
         HashSet<Node> closedSet = new HashSet<Node>();
