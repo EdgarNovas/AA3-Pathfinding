@@ -118,7 +118,7 @@ public class PathFinding : MonoBehaviour
         return waypoints.ToArray();
     }
 
-    int GetDistance(Node nodeA, Node nodeB)
+    public int GetDistance(Node nodeA, Node nodeB)
     {
         // la Y es la z
         int distanceX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
@@ -273,5 +273,51 @@ public class PathFinding : MonoBehaviour
             }
         }
         return false;
+    }
+
+    public List<Node> FindPath_Nodes(Vector3 startPos, Vector3 targetPos)
+    {
+        Node startNode = grid3D.NodeFromWorldPoint(startPos);
+        Node targetNode = grid3D.NodeFromWorldPoint(targetPos);
+
+        if (!startNode.walkable || !targetNode.walkable)
+            return null;
+
+        grid3D.ResetGrid();
+
+        int dummy = 0;
+        bool success = false;
+
+        switch (currentAlgorithm)
+        {
+            case AlgorithmType.AStar:
+                success = AStar(startNode, targetNode, ref dummy);
+                break;
+            case AlgorithmType.Dijkstra:
+                success = Dijkstra(startNode, targetNode, ref dummy);
+                break;
+            case AlgorithmType.GreedyBFS:
+                success = Greedy(startNode, targetNode, ref dummy);
+                break;
+            case AlgorithmType.BFS:
+                success = BFS(startNode, targetNode, ref dummy);
+                break;
+        }
+
+        if (!success)
+            return null;
+
+        //Devuelve lista de nodos (no solo vectores)
+        List<Node> path = new List<Node>();
+        Node currentNode = targetNode;
+
+        while (currentNode != startNode)
+        {
+            path.Add(currentNode);
+            currentNode = currentNode.parent;
+        }
+
+        path.Reverse();
+        return path;
     }
 }

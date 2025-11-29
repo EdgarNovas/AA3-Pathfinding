@@ -73,10 +73,10 @@ public class PathfindingExperiment : MonoBehaviour
     void PrintSummary()
     {
         Debug.Log("===== RESULTADOS TEST=====");
-        Debug.Log(GetSummary("A*", exploredAStar));
         Debug.Log(GetSummary("BFS", exploredBFS));
         Debug.Log(GetSummary("Dijkstra", exploredDijkstra));
         Debug.Log(GetSummary("Greedy", exploredGreedy));
+        Debug.Log(GetSummary("A*", exploredAStar));
         Debug.Log("===== FINAL TEST=====");
     }
 
