@@ -42,7 +42,6 @@ public class PathFinding : MonoBehaviour
         Vector3[] waypoints = new Vector3[0];
         bool pathSuccess = false;
 
-        
         int nodesExplored = 0;
 
         Node startNode = grid3D.NodeFromWorldPoint(startPos);
